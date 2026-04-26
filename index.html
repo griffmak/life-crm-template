@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+  <meta charset='UTF-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+  <title>Life CRM</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f0f0f;
+      color: #e5e5e5;
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      padding: 24px 16px;
+    }
+    .container { max-width: 1100px; margin: 0 auto; }
+    header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    header h1 { font-size: 22px; font-weight: 600; color: #fff; }
+    .run-ts { font-family: monospace; font-size: 12px; color: #666; }
+    .section { margin-bottom: 32px; }
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #666;
+      margin-bottom: 10px;
+    }
+    /* Category cards */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 32px;
+    }
+    .card {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 6px;
+      padding: 14px 16px;
+      cursor: pointer;
+      user-select: none;
+      transition: border-color 0.15s;
+    }
+    .card:hover { border-color: #444; }
+    .card.active { border-color: #555; background: #222; }
+    .card-name { font-size: 12px; color: #999; margin-bottom: 6px; }
+    .card-row { display: flex; align-items: center; gap: 8px; }
+    .card-count { font-size: 20px; font-weight: 600; color: #fff; }
+    .card-items {
+      display: none;
+      margin-bottom: 24px;
+      border: 1px solid #2a2a2a;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .card-items.open { display: block; }
+    .card-items-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: #222;
+      border-bottom: 1px solid #2a2a2a;
+      font-size: 12px;
+      font-weight: 600;
+      color: #999;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .card-items-close { cursor: pointer; color: #555; font-size: 16px; line-height: 1; }
+    .card-items-close:hover { color: #999; }
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .dot-green  { background: #22c55e; }
+    .dot-yellow { background: #f59e0b; }
+    .dot-red    { background: #ef4444; }
+    /* Item rows */
+    .item-list { display: flex; flex-direction: column; gap: 2px; }
+    .item-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 5px;
+      padding: 10px 14px;
+    }
+    .item-row.overdue { border-left: 3px solid #ef4444; }
+    .item-name { flex: 1; font-weight: 500; color: #e5e5e5; }
+    .item-meta { font-size: 12px; color: #666; white-space: nowrap; }
+    .item-amount { font-size: 12px; color: #999; white-space: nowrap; }
+    .btn-done {
+      padding: 4px 10px;
+      font-size: 12px;
+      border-radius: 4px;
+      border: 1px solid #3a3a3a;
+      background: #222;
+      color: #ccc;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-done:hover { background: #2a2a2a; color: #fff; }
+    .btn-done:disabled { opacity: 0.5; cursor: default; }
+    /* People directory */
+    .people-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .person-chip {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 20px;
+      padding: 5px 12px;
+      font-size: 12px;
+    }
+    .person-name { color: #e5e5e5; }
+    .person-days { color: #666; margin-left: 4px; }
+    /* Summary bar */
+    .summary-bar {
+      display: flex;
+      gap: 24px;
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 6px;
+      padding: 14px 16px;
+    }
+    .summary-stat { text-align: center; }
+    .summary-num { font-size: 24px; font-weight: 600; color: #fff; }
+    .summary-label { font-size: 11px; color: #666; }
+    .empty { color: #555; font-size: 13px; padding: 10px 0; }
+    footer {
+      margin-top: 40px;
+      font-family: monospace;
+      font-size: 11px;
+      color: #444;
+      border-top: 1px solid #1e1e1e;
+      padding-top: 16px;
+    }
+    @media (max-width: 768px) {
+      .cards { grid-template-columns: repeat(2, 1fr); }
+      .item-row { flex-wrap: wrap; }
+      .summary-bar { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+<div class='container'>
+
+  <header>
+    <h1>Life CRM</h1>
+    <span class='run-ts' id='header-ts'>Loading...</span>
+  </header>
+
+  <div class='cards' id='category-cards'></div>
+  <div class='card-items' id='card-items-panel'>
+    <div class='card-items-header'>
+      <span id='card-items-title'></span>
+      <span class='card-items-close' onclick='closeCategory()'>✕</span>
+    </div>
+    <div class='item-list' id='card-items-list' style='padding:8px;gap:4px;display:flex;flex-direction:column;'></div>
+  </div>
+
+  <div class='section'>
+    <div class='section-title'>Overdue</div>
+    <div class='item-list' id='section-overdue'><div class='empty'>None — you're on top of it.</div></div>
+  </div>
+
+  <div class='section'>
+    <div class='section-title'>This Week</div>
+    <div class='item-list' id='section-week'><div class='empty'>Nothing due this week.</div></div>
+  </div>
+
+  <div class='section'>
+    <div class='section-title'>Decisions Needed</div>
+    <div class='item-list' id='section-decisions'><div class='empty'>No high-urgency items without a due date.</div></div>
+  </div>
+
+  <div class='section'>
+    <div class='section-title'>Social &amp; Plans</div>
+    <div class='item-list' id='section-social'></div>
+    <div style='margin-top:12px;'>
+      <div class='section-title' style='margin-bottom:8px;'>People</div>
+      <div class='people-grid' id='people-grid'><span class='empty'>No people tracked yet.</span></div>
+    </div>
+  </div>
+
+  <div class='section'>
+    <div class='section-title'>Recently Logged via iMessage</div>
+    <div class='item-list' id='section-imessage'><div class='empty'>No iMessage items yet.</div></div>
+  </div>
+
+  <div class='section'>
+    <div class='section-title'>Monthly Summary</div>
+    <div class='summary-bar' id='monthly-summary'>
+      <div class='summary-stat'><div class='summary-num' id='stat-done'>—</div><div class='summary-label'>Done this month</div></div>
+      <div class='summary-stat'><div class='summary-num' id='stat-active'>—</div><div class='summary-label'>Active items</div></div>
+    </div>
+  </div>
+
+  <footer id='footer'>Last agent run: —</footer>
+
+</div>
+
+<script>
+  let _allItems = [];
+  let _activeCat = null;
+
+  function toggleCategory(cat) {
+    const panel = document.getElementById('card-items-panel');
+    const list  = document.getElementById('card-items-list');
+    const title = document.getElementById('card-items-title');
+    const cards = document.querySelectorAll('.card');
+
+    if (_activeCat === cat) {
+      closeCategory();
+      return;
+    }
+
+    _activeCat = cat;
+    cards.forEach(c => c.classList.toggle('active', c.dataset.cat === cat));
+
+    const catItems = _allItems.filter(i => i.category === cat && i.status === 'active');
+    title.textContent = cat;
+    list.innerHTML = catItems.length
+      ? catItems.map(i => itemRow(i, false)).join('')
+      : "<div class='empty' style='padding:10px 4px;'>No active items in this category.</div>";
+    panel.classList.add('open');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function closeCategory() {
+    _activeCat = null;
+    document.getElementById('card-items-panel').classList.remove('open');
+    document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
+  }
+
+  const CATEGORIES = [
+    'Housing',
+    'Bills & Subscriptions',
+    'Health',
+    'Social & Plans',
+    'Taxes & Business',
+    'NYC & Bureaucratic',
+    'Digital',
+    'Roommate Finance',
+  ];
+
+  async function markDone(id, recurrence) {
+    const btn = document.getElementById('btn-' + id);
+    btn.textContent = '...';
+    btn.disabled = true;
+    const res = await fetch('/api/complete', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, recurrence })
+    });
+    const data = await res.json();
+    if (data.nextDue) {
+      btn.textContent = '✓ Next: ' + data.nextDue;
+    } else {
+      btn.textContent = '✓ Done';
+    }
+    setTimeout(() => location.reload(), 1500);
+  }
+
+  function fmt(iso) {
+    if (!iso) return '—';
+    return iso.slice(0, 10);
+  }
+
+  function fmtTs(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  }
+
+  function daysSince(iso) {
+    return Math.floor((Date.now() - new Date(iso)) / 86400000);
+  }
+
+  function itemRow(item, overdue) {
+    const amountHtml = item.amount ? `<span class='item-amount'>$${Number(item.amount).toFixed(2)}</span>` : '';
+    const dueHtml = item.next_due ? `<span class='item-meta'>${fmt(item.next_due)}</span>` : '';
+    const catHtml = `<span class='item-meta'>${item.category || ''}</span>`;
+    const btnId = 'btn-' + item.id;
+    const rowClass = overdue ? 'item-row overdue' : 'item-row';
+    return `<div class='${rowClass}'>
+      <span class='item-name'>${item.name || ''}</span>
+      ${catHtml}
+      ${dueHtml}
+      ${amountHtml}
+      <button class='btn-done' id='${btnId}' onclick='markDone("${item.id}","${item.recurrence || ''}")'>Mark Done</button>
+    </div>`;
+  }
+
+  function render(data) {
+    const { items, lastRun } = data;
+    _allItems = items;
+    const now = new Date();
+    const today = now.toISOString().slice(0, 10);
+
+    const in7 = new Date(now); in7.setDate(in7.getDate() + 7);
+    const in7s = in7.toISOString().slice(0, 10);
+
+    const nowMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+
+    // Header timestamp
+    document.getElementById('header-ts').textContent =
+      lastRun ? 'Last run: ' + fmtTs(lastRun.run_at) : 'No runs yet';
+
+    // Category cards
+    const cardContainer = document.getElementById('category-cards');
+    cardContainer.innerHTML = CATEGORIES.map(cat => {
+      const catItems = items.filter(i => i.category === cat && i.status === 'active');
+      let dotClass = 'dot-green';
+      for (const i of catItems) {
+        if (i.next_due && i.next_due <= today) { dotClass = 'dot-red'; break; }
+        if (i.urgency === 'high') { dotClass = 'dot-red'; break; }
+        if (i.urgency === 'medium') dotClass = 'dot-yellow';
+      }
+      return `<div class='card' data-cat="${cat}" onclick='toggleCategory("${cat}")'>
+        <div class='card-name'>${cat}</div>
+        <div class='card-row'>
+          <div class='card-count'>${catItems.length}</div>
+          <div class='dot ${dotClass}'></div>
+        </div>
+      </div>`;
+    }).join('');
+
+    // Overdue
+    const overdue = items.filter(i => i.status === 'active' && i.next_due && i.next_due < today);
+    overdue.sort((a, b) => (a.next_due || '').localeCompare(b.next_due || ''));
+    const overdueEl = document.getElementById('section-overdue');
+    overdueEl.innerHTML = overdue.length
+      ? overdue.map(i => itemRow(i, true)).join('')
+      : "<div class='empty'>None — you're on top of it.</div>";
+
+    // This Week (not overdue, due within 7 days)
+    const week = items.filter(i =>
+      i.status === 'active' && i.next_due && i.next_due >= today && i.next_due <= in7s
+    );
+    week.sort((a, b) => (a.next_due || '').localeCompare(b.next_due || ''));
+    const weekEl = document.getElementById('section-week');
+    weekEl.innerHTML = week.length
+      ? week.map(i => itemRow(i, false)).join('')
+      : "<div class='empty'>Nothing due this week.</div>";
+
+    // Decisions Needed
+    const decisions = items.filter(i =>
+      i.status === 'active' && i.urgency === 'high' && !i.next_due
+    );
+    const decisionsEl = document.getElementById('section-decisions');
+    decisionsEl.innerHTML = decisions.length
+      ? decisions.map(i => itemRow(i, false)).join('')
+      : "<div class='empty'>No high-urgency items without a due date.</div>";
+
+    // Social & Plans
+    const social = items.filter(i => i.category === 'Social & Plans' && i.status === 'active');
+    social.sort((a, b) => (a.next_due || 'z').localeCompare(b.next_due || 'z'));
+    const socialEl = document.getElementById('section-social');
+    socialEl.innerHTML = social.length
+      ? social.map(i => itemRow(i, false)).join('')
+      : "<div class='empty'>No upcoming plans.</div>";
+
+    // People directory
+    const peopleMap = {};
+    items
+      .filter(i => i.category === 'Social & Plans' && Array.isArray(i.people))
+      .forEach(item => {
+        item.people.forEach(person => {
+          if (!peopleMap[person] || item.updated_at > peopleMap[person].last) {
+            peopleMap[person] = { last: item.updated_at, itemName: item.name };
+          }
+        });
+      });
+    const peopleEl = document.getElementById('people-grid');
+    const people = Object.entries(peopleMap);
+    if (people.length) {
+      people.sort((a, b) => daysSince(b[1].last) - daysSince(a[1].last));
+      peopleEl.innerHTML = people.map(([name, meta]) => {
+        const days = daysSince(meta.last);
+        return `<div class='person-chip'>
+          <span class='person-name'>${name}</span>
+          <span class='person-days'>${days}d ago</span>
+        </div>`;
+      }).join('');
+    } else {
+      peopleEl.innerHTML = "<span class='empty'>No people tracked yet.</span>";
+    }
+
+    // Recently Logged via iMessage
+    const imessage = items
+      .filter(i => i.source === 'imessage')
+      .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
+      .slice(0, 5);
+    const imessageEl = document.getElementById('section-imessage');
+    imessageEl.innerHTML = imessage.length
+      ? imessage.map(i => `<div class='item-row'>
+          <span class='item-name'>${i.name || ''}</span>
+          <span class='item-meta'>${i.category || ''}</span>
+          <span class='item-meta' style='font-family:monospace'>${fmt(i.created_at)}</span>
+        </div>`).join('')
+      : "<div class='empty'>No iMessage items yet.</div>";
+
+    // Monthly summary
+    const doneThisMonth = items.filter(i => i.last_done && i.last_done.startsWith(nowMonth)).length;
+    const totalActive = items.filter(i => i.status === 'active').length;
+    document.getElementById('stat-done').textContent = doneThisMonth;
+    document.getElementById('stat-active').textContent = totalActive;
+
+    // Footer
+    const footerEl = document.getElementById('footer');
+    if (lastRun) {
+      footerEl.textContent = `Last agent run: ${fmtTs(lastRun.run_at)} | ${lastRun.summary || ''}`;
+    } else {
+      footerEl.textContent = 'Last agent run: No runs yet';
+    }
+  }
+
+  async function load() {
+    try {
+      const res = await fetch('/api/data');
+      const data = await res.json();
+      render(data);
+    } catch (e) {
+      document.getElementById('header-ts').textContent = 'Error loading data';
+      console.error(e);
+    }
+  }
+
+  load();
+</script>
+</body>
+</html>
